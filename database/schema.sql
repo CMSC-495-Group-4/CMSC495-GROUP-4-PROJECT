@@ -24,6 +24,17 @@ CREATE TABLE IF NOT EXISTS Pathways (
     FOREIGN KEY (end_building_id) REFERENCES Buildings (building_id)
 );
 
+CREATE TABLE IF NOT EXISTS PathwayTraffic (
+    pathway_id INTEGER NOT NULL,
+    time_period TEXT NOT NULL
+        CHECK (time_period IN ('morning', 'midday', 'evening')),
+    foot_traffic TEXT NOT NULL
+        CHECK (foot_traffic IN ('low', 'medium', 'high')),
+    PRIMARY KEY (pathway_id, time_period),
+    FOREIGN KEY (pathway_id) REFERENCES Pathways (pathway_id)
+        ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS TravelTimeObservations (
     observation_id INTEGER PRIMARY KEY,
     pathway_id INTEGER NOT NULL,
@@ -40,6 +51,9 @@ CREATE INDEX IF NOT EXISTS idx_pathways_start_building
 
 CREATE INDEX IF NOT EXISTS idx_pathways_end_building
     ON Pathways (end_building_id);
+
+CREATE INDEX IF NOT EXISTS idx_pathway_traffic_time_period
+    ON PathwayTraffic (time_period);
 
 CREATE INDEX IF NOT EXISTS idx_travel_time_observations_pathway
     ON TravelTimeObservations (pathway_id);
