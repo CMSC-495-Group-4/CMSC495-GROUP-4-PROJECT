@@ -62,8 +62,15 @@ function renderRoute(data, startId, destinationId) {
   if (
     !data
     || typeof data.routeId !== 'string'
-    || !Array.isArray(data.pathwayIds)
-    || !data.pathwayIds.every(Number.isInteger)
+    || !Array.isArray(data.directions)
+    || data.directions.length === 0
+    || !data.directions.every((direction, index) => (
+      Number.isInteger(direction?.stepNumber)
+      && direction.stepNumber === index + 1
+      && typeof direction.instruction === 'string'
+      && Number.isFinite(direction.distanceMeters)
+      && direction.distanceMeters >= 0
+    ))
     || !Number.isFinite(data.distanceMeters)
     || data.distanceMeters < 0
     || !Number.isFinite(data.estimatedMinutes)
@@ -78,11 +85,22 @@ function renderRoute(data, startId, destinationId) {
   $('result-destination').textContent = locations.find((location) => location.id === destinationId)?.name || String(destinationId);
   $('minutes').textContent = data.estimatedMinutes.toFixed(1);
   $('distance').textContent = Math.round(data.distanceMeters).toLocaleString();
-  $('route-id').textContent = data.routeId;
   $('accessibility-result').textContent = data.accessible ? 'Accessible route' : 'Standard route';
   $('traffic-period').textContent = data.timePeriod || 'Not applied';
   $('source').textContent = data.predictionSource === 'ai' ? 'AI prediction' : 'Distance-based estimate';
-  $('pathways').textContent = data.pathwayIds.join(', ') || 'Not provided';
+  const directions = $('directions');
+  directions.replaceChildren();
+  data.directions.forEach((step) => {
+    const item = document.createElement('li');
+    item.className = 'direction-step';
+    const instruction = document.createElement('p');
+    instruction.textContent = step.instruction;
+    const distance = document.createElement('span');
+    distance.className = 'direction-distance';
+    distance.textContent = `About ${Math.round(step.distanceMeters)} m (demo)`;
+    item.append(instruction, distance);
+    directions.append(item);
+  });
   $('empty-state').hidden = true;
   $('route-results').hidden = false;
 }

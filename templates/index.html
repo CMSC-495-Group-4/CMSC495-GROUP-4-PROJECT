@@ -27,7 +27,21 @@
       </section>
       <section class="panel results" aria-labelledby="results-title"><div class="panel-heading"><span class="step">02</span><div><h2 id="results-title">Your journey</h2><p>Route details and travel estimate</p></div></div>
         <div id="empty-state" class="empty-state"><div class="route-graphic"><span>◎</span><div class="route-dashes"></div><span>◆</span></div><h3>Your next stop starts here</h3><p>Select two campus locations and click “Find my route” to see your results.</p></div>
-        <div id="route-results" hidden><div class="result-route"><span id="result-start"></span><span class="route-arrow">→</span><span id="result-destination"></span></div><div class="metrics"><div class="metric"><span class="metric-label">ESTIMATED WALK</span><strong id="minutes">—</strong><span class="metric-unit">minutes</span></div><div class="metric"><span class="metric-label">TOTAL DISTANCE</span><strong id="distance">—</strong><span class="metric-unit">meters</span></div></div><div class="detail"><span>Route ID</span><strong id="route-id"></strong></div><div class="detail"><span>Accessibility</span><strong id="accessibility-result"></strong></div><div class="detail"><span>Traffic scenario</span><strong id="traffic-period"></strong></div><div class="detail"><span>Estimate source</span><strong id="source"></strong></div><div class="detail"><span>Pathway IDs</span><strong id="pathways"></strong></div><p class="disclaimer">Travel times use a fixed walking-speed estimate and configured traffic scenarios—not a trained prediction or live traffic. Verify accessibility conditions before relying on them.</p></div>
+        <div id="route-results" hidden>
+          <div class="result-route"><span id="result-start"></span><span class="route-arrow">→</span><span id="result-destination"></span></div>
+          <div class="metrics">
+            <div class="metric"><span class="metric-label">ESTIMATED WALK · DEMO</span><strong id="minutes">—</strong><span class="metric-unit">minutes</span></div>
+            <div class="metric"><span class="metric-label">TOTAL DISTANCE · DEMO</span><strong id="distance">—</strong><span class="metric-unit">meters</span></div>
+          </div>
+          <div class="detail"><span>Accessibility</span><strong id="accessibility-result"></strong></div>
+          <div class="detail"><span>Traffic scenario</span><strong id="traffic-period"></strong></div>
+          <div class="detail"><span>Estimate source</span><strong id="source"></strong></div>
+          <section class="route-directions" aria-labelledby="directions-title">
+            <h3 id="directions-title">Step-by-step demo directions</h3>
+            <ol id="directions"></ol>
+          </section>
+          <p class="disclaimer">Directions and distances use the simulated pathway data. They are not turn-by-turn guidance. Walking times use configured traffic scenarios—not live traffic or a trained prediction. Verify accessibility conditions before relying on a route.</p>
+        </div>
       </section>
     </div>
     <section class="panel assistant" aria-labelledby="assistant-title">
@@ -37,12 +51,12 @@
       </div>
       <form id="chat-form" class="chat-form">
         <label for="chat-input">Your question</label>
-        <textarea id="chat-input" maxlength="500" rows="2" required placeholder="For example: Find an accessible route from the Library to the Student Union in the morning."></textarea>
+        <textarea id="chat-input" maxlength="500" rows="2" required placeholder="For example: Find an accessible route from Cambridge Hall to Centreville Hall in the morning."></textarea>
         <button class="primary" id="chat-submit" type="submit">Ask CampusPath <span>→</span></button>
       </form>
       <p class="chat-disclaimer">Messages are sent to OpenAI to generate a response. Do not enter personal or sensitive information. This prototype may use simulated campus data.</p>
     </section>
-    <section class="info-strip"><div><span>01 /</span><strong>Choose locations</strong><p>Select from predefined campus buildings.</p></div><div><span>02 /</span><strong>Set preferences</strong><p>Request accessible pathways if needed.</p></div><div><span>03 /</span><strong>Get an estimate</strong><p>View route distance and predicted walking time.</p></div></section>
+    <section class="info-strip"><div><span>01 /</span><strong>Choose locations</strong><p>Select from predefined campus buildings.</p></div><div><span>02 /</span><strong>Set preferences</strong><p>Request accessible pathways if needed.</p></div><div><span>03 /</span><strong>Get an estimate</strong><p>View demo route distance and estimated walking time.</p></div></section>
   </main><footer>CampusPath · Academic prototype · University of Maryland Global Campus · CMSC 495 Group 4</footer>
 </body>
 </html>

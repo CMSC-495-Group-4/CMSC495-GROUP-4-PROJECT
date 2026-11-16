@@ -65,6 +65,7 @@ class CampusNavigationApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Campus assistant", response.data)
         self.assertIn(b"chat-input", response.data)
+        self.assertIn(b"Step-by-step demo directions", response.data)
 
     def test_locations_endpoint_returns_database_buildings(self):
         response = self.client.get("/api/locations")
@@ -92,6 +93,21 @@ class CampusNavigationApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(route["pathwayIds"], [10, 11])
         self.assertEqual(route["distanceMeters"], 200)
+        self.assertEqual(
+            route["directions"],
+            [
+                {
+                    "stepNumber": 1,
+                    "instruction": "From Library, follow the demo campus walkway toward Science.",
+                    "distanceMeters": 100,
+                },
+                {
+                    "stepNumber": 2,
+                    "instruction": "From Science, follow the demo campus walkway toward Center.",
+                    "distanceMeters": 100,
+                },
+            ],
+        )
         self.assertAlmostEqual(route["estimatedMinutes"], 200 / 75)
         self.assertEqual(route["predictionSource"], "distance-based")
 

@@ -71,17 +71,26 @@ def _shortest_path(connection, start_id, destination_id, accessible, time_period
         return None
 
     pathway_ids = []
+    path_segments = []
     current_id = destination_id
     total_distance = 0.0
     while current_id != start_id:
         previous_id, pathway_id, edge_distance = previous[current_id]
         pathway_ids.append(pathway_id)
+        path_segments.append(
+            {
+                "startBuildingId": previous_id,
+                "endBuildingId": current_id,
+                "distanceMeters": edge_distance,
+            }
+        )
         total_distance += edge_distance
         current_id = previous_id
     pathway_ids.reverse()
+    path_segments.reverse()
 
     estimated_minutes = distances[destination_id] / WALKING_SPEED_METERS_PER_MINUTE
-    return total_distance, estimated_minutes, pathway_ids
+    return total_distance, estimated_minutes, pathway_ids, path_segments
 
 
 def _find_route(connection, start_id, destination_id, accessible, time_period=None):
@@ -132,11 +141,40 @@ def _find_route(connection, start_id, destination_id, accessible, time_period=No
             404,
         )
 
-    distance_meters, estimated_minutes, pathway_ids = result
+    distance_meters, estimated_minutes, pathway_ids, path_segments = result
+    route_building_ids = {start_id, destination_id}
+    for segment in path_segments:
+        route_building_ids.add(segment["startBuildingId"])
+        route_building_ids.add(segment["endBuildingId"])
+    placeholders = ", ".join("?" for _ in route_building_ids)
+    building_names = {
+        row["building_id"]: row["building_name"]
+        for row in connection.execute(
+            f"""
+            SELECT building_id, building_name
+            FROM Buildings
+            WHERE building_id IN ({placeholders})
+            """,
+            tuple(route_building_ids),
+        )
+    }
+    directions = [
+        {
+            "stepNumber": index,
+            "instruction": (
+                f"From {building_names[segment['startBuildingId']]}, "
+                f"follow the demo campus walkway toward "
+                f"{building_names[segment['endBuildingId']]}."
+            ),
+            "distanceMeters": segment["distanceMeters"],
+        }
+        for index, segment in enumerate(path_segments, start=1)
+    ]
     return (
         {
             "routeId": uuid.uuid4().hex,
             "pathwayIds": pathway_ids,
+            "directions": directions,
             "distanceMeters": distance_meters,
             "accessible": accessible,
             "estimatedMinutes": estimated_minutes,
@@ -310,7 +348,7 @@ def create_app(test_config=None):
         period_label = f" for {time_period}" if time_period else ""
         reply = (
             f"Route from {start['name']} to {destination['name']}{period_label}: "
-            f"{route_data['distanceMeters']:.0f} m, about "
+            f"demo distance about {route_data['distanceMeters']:.0f} m, about "
             f"{route_data['estimatedMinutes']:.1f} minutes. "
             "This is an estimate based on the configured route data, not live "
             "traffic or verified accessibility information."
