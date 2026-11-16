@@ -92,3 +92,6 @@ before exposing it publicly, and monitor the OpenAI API spending limit.
 Team members work in separate feature branches
 and submit pull requests for review before
 merging into main.
+
+GitHub Actions runs the unit test suite on every push and on pull requests
+targeting `main`. Confirm the **CI / Python tests** check passes before merging.
