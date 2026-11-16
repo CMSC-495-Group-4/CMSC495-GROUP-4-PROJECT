@@ -62,8 +62,15 @@ function renderRoute(data, startId, destinationId) {
   if (
     !data
     || typeof data.routeId !== 'string'
-    || !Array.isArray(data.pathwayIds)
-    || !data.pathwayIds.every(Number.isInteger)
+    || !Array.isArray(data.directions)
+    || data.directions.length === 0
+    || !data.directions.every((direction, index) => (
+      Number.isInteger(direction?.stepNumber)
+      && direction.stepNumber === index + 1
+      && typeof direction.instruction === 'string'
+      && Number.isFinite(direction.distanceMeters)
+      && direction.distanceMeters >= 0
+    ))
     || !Number.isFinite(data.distanceMeters)
     || data.distanceMeters < 0
     || !Number.isFinite(data.estimatedMinutes)
@@ -78,10 +85,22 @@ function renderRoute(data, startId, destinationId) {
   $('result-destination').textContent = locations.find((location) => location.id === destinationId)?.name || String(destinationId);
   $('minutes').textContent = data.estimatedMinutes.toFixed(1);
   $('distance').textContent = Math.round(data.distanceMeters).toLocaleString();
-  $('route-id').textContent = data.routeId;
   $('accessibility-result').textContent = data.accessible ? 'Accessible route' : 'Standard route';
+  $('traffic-period').textContent = data.timePeriod || 'Not applied';
   $('source').textContent = data.predictionSource === 'ai' ? 'AI prediction' : 'Distance-based estimate';
-  $('pathways').textContent = data.pathwayIds.join(', ') || 'Not provided';
+  const directions = $('directions');
+  directions.replaceChildren();
+  data.directions.forEach((step) => {
+    const item = document.createElement('li');
+    item.className = 'direction-step';
+    const instruction = document.createElement('p');
+    instruction.textContent = step.instruction;
+    const distance = document.createElement('span');
+    distance.className = 'direction-distance';
+    distance.textContent = `About ${Math.round(step.distanceMeters)} m`;
+    item.append(instruction, distance);
+    directions.append(item);
+  });
   $('empty-state').hidden = true;
   $('route-results').hidden = false;
 }
@@ -99,6 +118,7 @@ $('route-form').addEventListener('submit', async (event) => {
   const startId = Number($('start').value);
   const destinationId = Number($('destination').value);
   const accessible = $('accessible').checked;
+  const timePeriod = $('time-period').value || null;
   if (!startId || !destinationId) {
     showMessage('Please select both locations.');
     return;
@@ -117,7 +137,7 @@ $('route-form').addEventListener('submit', async (event) => {
         'Content-Type': 'application/json',
         Accept: 'application/json'
       },
-      body: JSON.stringify({startId, destinationId, accessible})
+      body: JSON.stringify({startId, destinationId, accessible, timePeriod})
     });
     const data = await response.json();
     if (!response.ok) {
@@ -131,6 +151,53 @@ $('route-form').addEventListener('submit', async (event) => {
   } finally {
     $('submit').disabled = locations.length === 0;
     $('submit').firstChild.textContent = 'Find my route ';
+  }
+});
+
+function addChatMessage(role, text) {
+  const message = document.createElement('p');
+  message.className = `chat-message ${role}-message`;
+  message.textContent = text;
+  $('chat-messages').append(message);
+  $('chat-messages').scrollTop = $('chat-messages').scrollHeight;
+  return message;
+}
+
+$('chat-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const input = $('chat-input');
+  const message = input.value.trim();
+  if (!message) return;
+
+  addChatMessage('user', message);
+  input.value = '';
+  $('chat-submit').disabled = true;
+  const pending = addChatMessage('assistant', 'Thinking…');
+  try {
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json'
+      },
+      body: JSON.stringify({message})
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data?.error?.message || `Assistant request failed (HTTP ${response.status}).`);
+    }
+    if (typeof data.reply !== 'string') {
+      throw new Error('The server returned an invalid assistant response.');
+    }
+    pending.textContent = data.reply;
+    if (data.route) {
+      renderRoute(data.route, data.route.startId, data.route.destinationId);
+    }
+  } catch (error) {
+    pending.textContent = error.message || 'Unable to reach the campus assistant.';
+  } finally {
+    $('chat-submit').disabled = false;
+    input.focus();
   }
 });
 
