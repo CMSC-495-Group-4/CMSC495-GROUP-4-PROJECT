@@ -12,10 +12,16 @@ FAQ_KNOWLEDGE = [
     "CampusPath is an academic prototype for campus walking routes.",
     "To calculate a route, select a start and destination, optionally choose "
     "a time period and accessible routing, and submit the route form.",
-    "Routes use pathway distances. When a time period is selected, stored "
-    "foot-traffic levels can affect route selection and the estimated time.",
-    "Walking time is an estimate based on a fixed speed and is not a live "
-    "traffic measurement or a trained AI prediction.",
+    "Route distance is the sum of the stored distances for each pathway "
+    "segment in the selected route. Distances in the included demo dataset "
+    "are simulated, not measured walking distances.",
+    "Walking time uses a fixed baseline of 75 meters per minute. Without a "
+    "time period, estimated minutes are the route distance divided by 75. "
+    "When a time period is selected, each segment's distance is weighted by "
+    "its configured traffic level (low 1, medium 1.5, high 3); estimated "
+    "minutes are the total weighted distance divided by 75. These traffic "
+    "weights and the resulting time are illustrative, not live measurements "
+    "or a trained AI prediction.",
     "Accessible routing filters pathways using the accessibility and stairs "
     "fields in the database. Those records must be verified before relying "
     "on them for real-world accessibility needs.",
@@ -59,7 +65,10 @@ def interpret_message(message, locations, api_key, model):
         "destination, accessible, and timePeriod. intent must be faq, route, "
         "or clarify; accessible must be true or false; timePeriod must "
         "be morning, midday, evening, or null. For faq/clarify, answer must "
-        "be a concise plain-text response."
+        "be a concise plain-text response. When asked how distance or walking "
+        "time is calculated, state the stored-segment distance method, the "
+        "75 meters per minute baseline, and the simulated traffic weights "
+        "when relevant."
     )
     payload = {
         "model": model,

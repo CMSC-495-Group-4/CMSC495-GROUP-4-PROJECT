@@ -185,7 +185,11 @@ class CampusNavigationApiTests(unittest.TestCase):
                         "content": json.dumps(
                             {
                                 "intent": "faq",
-                                "answer": "Walking times are estimates, not live traffic.",
+                                "answer": (
+                                    "Route distance sums stored segment distances. "
+                                    "Walking time uses a 75 meters per minute baseline "
+                                    "and illustrative traffic weights when selected."
+                                ),
                                 "start": None,
                                 "destination": None,
                                 "accessible": None,
@@ -207,17 +211,32 @@ class CampusNavigationApiTests(unittest.TestCase):
             def read(self):
                 return json.dumps(provider_response).encode("utf-8")
 
-        with patch("chatbot.urllib.request.urlopen", return_value=FakeResponse()):
+        with patch(
+            "chatbot.urllib.request.urlopen", return_value=FakeResponse()
+        ) as openai_request:
             response = self.client.post(
                 "/api/chat",
-                json={"message": "Are the walking times live?"},
+                json={"message": "How are route distance and walking time calculated?"},
             )
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             response.get_json()["reply"],
-            "Walking times are estimates, not live traffic.",
+            (
+                "Route distance sums stored segment distances. Walking time uses "
+                "a 75 meters per minute baseline and illustrative traffic weights "
+                "when selected."
+            ),
         )
+        request_payload = json.loads(
+            openai_request.call_args.args[0].data.decode("utf-8")
+        )
+        assistant_context = request_payload["messages"][1]["content"]
+        self.assertIn(
+            "Route distance is the sum of the stored distances", assistant_context
+        )
+        self.assertIn("75 meters per minute", assistant_context)
+        self.assertIn("low 1, medium 1.5, high 3", assistant_context)
 
     def test_chat_requires_api_key(self):
         self.app.config["OPENAI_API_KEY"] = None
