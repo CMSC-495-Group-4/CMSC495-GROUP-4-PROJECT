@@ -162,8 +162,9 @@ def _find_route(connection, start_id, destination_id, accessible, time_period=No
         {
             "stepNumber": index,
             "instruction": (
-                f"From {building_names[segment['startBuildingId']]}, "
-                f"follow the demo campus walkway toward "
+                f"{'Start at' if index == 1 else 'At'} "
+                f"{building_names[segment['startBuildingId']]}, "
+                f"{'head' if index == 1 else 'continue'} toward "
                 f"{building_names[segment['endBuildingId']]}."
             ),
             "distanceMeters": segment["distanceMeters"],

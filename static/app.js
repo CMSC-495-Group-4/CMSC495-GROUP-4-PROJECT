@@ -97,7 +97,7 @@ function renderRoute(data, startId, destinationId) {
     instruction.textContent = step.instruction;
     const distance = document.createElement('span');
     distance.className = 'direction-distance';
-    distance.textContent = `About ${Math.round(step.distanceMeters)} m (demo)`;
+    distance.textContent = `About ${Math.round(step.distanceMeters)} m`;
     item.append(instruction, distance);
     directions.append(item);
   });

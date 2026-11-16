@@ -82,10 +82,9 @@ before exposing it publicly, and monitor the OpenAI API spending limit.
   scenario values when a time period is selected. This is an estimate, not a
   trained model prediction or live traffic. `TravelTimeObservations` remains
   available for future model training.
-- Route results include numbered building-to-building directions. These
-  directions and per-step distances are labeled as demo guidance because the
-  current pathway network is simulated; they do not provide turn-by-turn
-  navigation.
+- Route results include numbered building-to-building directions. The
+  results identify the directions and distances as simulated; they do not
+  provide turn-by-turn navigation.
 
 ## Team Roles
 - Lead Architect
