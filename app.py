@@ -12,11 +12,10 @@ from chatbot import (
 )
 from config import Config
 from db import get_db, init_app as init_database_app, initialize_database
-from route_rules import (
-    TIME_PERIODS,
-    TRAFFIC_COST_FACTORS,
-    WALKING_SPEED_METERS_PER_MINUTE,
-)
+
+
+WALKING_SPEED_METERS_PER_MINUTE = 75.0
+TRAFFIC_COST_FACTORS = {"low": 1.0, "medium": 1.5, "high": 3.0}
 
 
 def _shortest_path(connection, start_id, destination_id, accessible, time_period=None):
@@ -246,7 +245,7 @@ def create_app(test_config=None):
                 time_period is not None
                 and (
                     not isinstance(time_period, str)
-                    or time_period not in TIME_PERIODS
+                    or time_period not in {"morning", "midday", "evening"}
                 )
             )
         ):
@@ -254,7 +253,7 @@ def create_app(test_config=None):
                 "INVALID_REQUEST",
                 "startId and destinationId must be positive integers, and "
                 "accessible must be a boolean and timePeriod must be "
-                f"{', '.join(TIME_PERIODS)}, or omitted.",
+                "morning, midday, evening, or omitted.",
                 400,
             )
         route_data, error = _find_route(

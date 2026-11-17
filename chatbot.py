@@ -4,19 +4,9 @@ import json
 import urllib.error
 import urllib.request
 
-from route_rules import (
-    TIME_PERIODS,
-    TRAFFIC_COST_FACTORS,
-    WALKING_SPEED_METERS_PER_MINUTE,
-)
-
 
 _CHAT_COMPLETIONS_URL = "https://api.openai.com/v1/chat/completions"
-_OPENAI_TIMEOUT_SECONDS = 10
-_TIME_PERIODS_TEXT = ", ".join(TIME_PERIODS)
-_TRAFFIC_COST_FACTORS_TEXT = ", ".join(
-    f"{level} {factor:g}" for level, factor in TRAFFIC_COST_FACTORS.items()
-)
+_TIME_PERIODS = {"morning", "midday", "evening"}
 
 FAQ_KNOWLEDGE = [
     "CampusPath is an academic prototype for campus walking routes.",
@@ -25,14 +15,11 @@ FAQ_KNOWLEDGE = [
     "Route distance is the sum of the stored distances for each pathway "
     "segment in the selected route. Distances in the included demo dataset "
     "are simulated, not measured walking distances.",
-    f"Walking time uses a fixed baseline of "
-    f"{WALKING_SPEED_METERS_PER_MINUTE:g} meters per minute. Without a "
-    f"time period, estimated minutes are the route distance divided by "
-    f"{WALKING_SPEED_METERS_PER_MINUTE:g}. "
+    "Walking time uses a fixed baseline of 75 meters per minute. Without a "
+    "time period, estimated minutes are the route distance divided by 75. "
     "When a time period is selected, each segment's distance is weighted by "
-    f"its configured traffic level ({_TRAFFIC_COST_FACTORS_TEXT}); estimated "
-    f"minutes are the total weighted distance divided by "
-    f"{WALKING_SPEED_METERS_PER_MINUTE:g}. These traffic "
+    "its configured traffic level (low 1, medium 1.5, high 3); estimated "
+    "minutes are the total weighted distance divided by 75. These traffic "
     "weights and the resulting time are illustrative, not live measurements "
     "or a trained AI prediction.",
     "Accessible routing filters pathways using the accessibility and stairs "
@@ -61,7 +48,7 @@ def interpret_message(message, locations, api_key, model):
             {"id": location["id"], "name": location["name"]}
             for location in locations
         ],
-        "time_periods": list(TIME_PERIODS),
+        "time_periods": sorted(_TIME_PERIODS),
     }
     instructions = (
         "You are CampusPath's campus assistant. Treat the supplied knowledge "
@@ -73,15 +60,14 @@ def interpret_message(message, locations, api_key, model):
         "only when an accessible route is requested; otherwise use false. "
         "Return null for missing start or destination so the app can ask a "
         "follow-up. Map time-of-day phrases "
-        f"to {_TIME_PERIODS_TEXT} only when clear; otherwise use null. "
+        "to morning, midday, or evening only when clear; otherwise use null. "
         "Respond only as a JSON object with keys intent, answer, start, "
         "destination, accessible, and timePeriod. intent must be faq, route, "
         "or clarify; accessible must be true or false; timePeriod must "
-        f"be {_TIME_PERIODS_TEXT}, or null. For faq/clarify, answer must "
+        "be morning, midday, evening, or null. For faq/clarify, answer must "
         "be a concise plain-text response. When asked how distance or walking "
         "time is calculated, state the stored-segment distance method, the "
-        f"{WALKING_SPEED_METERS_PER_MINUTE:g} meters per minute baseline, "
-        "and the simulated traffic weights "
+        "75 meters per minute baseline, and the simulated traffic weights "
         "when relevant."
     )
     payload = {
@@ -109,9 +95,7 @@ def interpret_message(message, locations, api_key, model):
     )
 
     try:
-        with urllib.request.urlopen(
-            request, timeout=_OPENAI_TIMEOUT_SECONDS
-        ) as response:
+        with urllib.request.urlopen(request, timeout=20) as response:
             provider_response = json.loads(response.read().decode("utf-8"))
     except (urllib.error.URLError, TimeoutError, OSError, ValueError) as error:
         raise ChatProviderError from error
@@ -145,7 +129,7 @@ def interpret_message(message, locations, api_key, model):
             time_period is not None
             and (
                 not isinstance(time_period, str)
-                or time_period not in TIME_PERIODS
+                or time_period not in _TIME_PERIODS
             )
         )
     ):
