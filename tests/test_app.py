@@ -220,6 +220,7 @@ class CampusNavigationApiTests(unittest.TestCase):
             )
 
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(openai_request.call_args.kwargs["timeout"], 10)
         self.assertEqual(
             response.get_json()["reply"],
             (
