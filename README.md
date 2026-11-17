@@ -78,6 +78,11 @@ before exposing it publicly, and monitor the OpenAI API spending limit.
   these are illustrative multipliers, not measured campus congestion.
   Pathways are treated as bidirectional. Accessible requests exclude pathways
   with stairs or without wheelchair access.
+- Shared routing rules are defined in `route_rules.py`, the source of truth
+  for route calculations and assistant explanations. `app.py` uses these
+  values for routing and validation, while `chatbot.py` uses them to keep its
+  explanations consistent. Update the shared module rather than duplicating
+  these rules in either file.
 - Walking times use a fixed 75 meters/minute baseline adjusted by traffic
   scenario values when a time period is selected. This is an estimate, not a
   trained model prediction or live traffic. `TravelTimeObservations` remains
