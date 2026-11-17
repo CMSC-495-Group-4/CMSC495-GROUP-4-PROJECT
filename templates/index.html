@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CampusPath | Campus Navigation</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='chatbot.css') }}">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="" defer></script>
+  <script src="{{ url_for('static', filename='map.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</head>
+<body>
+  <header class="topbar"><div class="brand"><span class="brand-mark">↗</span><span>Campus<span class="brand-accent">Path</span></span></div><span class="top-label">CMSC 495 · GROUP 4 PROTOTYPE</span></header>
+  <main class="shell">
+    <section class="intro"><span class="eyebrow">SMART CAMPUS NAVIGATION</span><h1>Find your way <em>across campus.</em></h1><p>Choose your destination, set your accessibility preferences, and get an estimated walking time.</p></section>
+    <div class="layout">
+      <section class="panel controls" aria-labelledby="plan-title"><div class="panel-heading"><span class="step">01</span><div><h2 id="plan-title">Plan your route</h2><p>Where would you like to go?</p></div></div>
+        <form id="route-form">
+          <label for="start">Starting location</label><select id="start" required><option value="">Loading locations…</option></select>
+          <div class="swap-row"><button type="button" id="swap" class="swap" aria-label="Swap start and destination">⇅ Swap locations</button></div>
+          <label for="destination">Destination</label><select id="destination" required><option value="">Loading locations…</option></select>
+          <label for="time-period">Time of day</label><select id="time-period"><option value="">No traffic scenario</option><option value="morning">Morning</option><option value="midday">Midday</option><option value="evening">Evening</option></select><small class="field-note">Scenario weights: low traffic ×1, medium ×1.5, high ×3.</small>
+          <label class="toggle-row" for="accessible"><span><strong>Accessible route</strong><small>Use pathways marked accessible in the demo database</small></span><input type="checkbox" id="accessible"></label>
+          <button class="primary" id="submit" type="submit" disabled><span id="submit-label">Find my route</span><span aria-hidden="true">→</span></button>
+          <div id="message" role="alert" aria-live="assertive" hidden></div>
+        </form>
+        <div class="demo-note"><span class="dot"></span><span id="mode-label" role="status">Checking backend connection…</span></div>
+      </section>
+      <section class="panel results" aria-labelledby="results-title"><div class="panel-heading"><span class="step">02</span><div><h2 id="results-title">Your journey</h2><p>Route details and travel estimate</p></div></div>
+        <div id="empty-state" class="empty-state"><div class="route-graphic"><span>◎</span><div class="route-dashes"></div><span>◆</span></div><h3>Your next stop starts here</h3><p>Select two campus locations and click “Find my route” to see your results.</p></div>
+        <div id="route-results" aria-live="polite" hidden>
+          <div class="result-route"><span id="result-start"></span><span class="route-arrow">→</span><span id="result-destination"></span></div>
+          <div class="metrics">
+            <div class="metric"><span class="metric-label">ESTIMATED WALK · DEMO</span><strong id="minutes">—</strong><span class="metric-unit">minutes</span></div>
+            <div class="metric"><span class="metric-label">TOTAL DISTANCE · DEMO</span><strong id="distance">—</strong><span class="metric-unit">meters</span></div>
+          </div>
+          <div class="detail"><span>Accessibility</span><strong id="accessibility-result"></strong></div>
+          <div class="detail"><span>Traffic scenario</span><strong id="traffic-period"></strong></div>
+          <div class="detail"><span>Estimate source</span><strong id="source"></strong></div>
+          <section class="route-directions" aria-labelledby="directions-title">
+            <h3 id="directions-title">Step-by-step directions</h3>
+            <ol id="directions"></ol>
+          </section>
+          <p class="disclaimer">Directions and distances use the simulated pathway data. They are not turn-by-turn guidance. Walking times use configured traffic scenarios—not live traffic or a trained prediction. Verify accessibility conditions before relying on a route.</p>
+        </div>
+      </section>
+    </div>
+    <section class="panel campus-map-panel" aria-labelledby="campus-map-title">
+      <div class="panel-heading"><span class="step">03</span><div><h2 id="campus-map-title">Campus map</h2><p>Select a marker to choose your starting point or destination.</p></div></div>
+      <div class="map-toolbar"><span id="map-status" role="status" aria-live="polite">Loading campus map…</span><button id="map-reset" class="swap" type="button">Show all buildings</button></div>
+      <div id="campus-map" role="region" aria-label="Interactive map of configured University of Maryland campus buildings" tabindex="0"></div>
+      <p class="map-note">Map pins represent building label points, not verified entrances. Dashed lines are visual connections between selected buildings, <strong>not walking directions</strong>. Use the text directions for the demonstration route. Map tiles require internet access.</p>
+    </section>
+    <section class="panel assistant" aria-labelledby="assistant-title">
+      <div class="panel-heading"><span class="step">04</span><div><h2 id="assistant-title">Campus assistant</h2><p>Ask a campus question or describe a route in plain language.</p></div></div>
+      <div id="chat-messages" class="chat-messages" role="log" aria-live="polite" aria-relevant="additions">
+        <p class="chat-message assistant-message">I can answer questions about this app or help plan a route using the configured locations. I only know the information provided to this demo.</p>
+      </div>
+      <form id="chat-form" class="chat-form">
+        <label for="chat-input">Your question</label>
+        <textarea id="chat-input" maxlength="500" rows="2" required placeholder="For example: Find an accessible route from Cambridge Hall to Centreville Hall in the morning."></textarea>
+        <button class="primary" id="chat-submit" type="submit">Ask CampusPath <span>→</span></button>
+      </form>
+      <p class="chat-disclaimer">Messages are sent to OpenAI for interpretation when the assistant is configured. Do not enter personal or sensitive information. This prototype may use simulated campus data.</p>
+    </section>
+    <section class="info-strip"><div><span>01 /</span><strong>Choose locations</strong><p>Select from predefined campus buildings.</p></div><div><span>02 /</span><strong>Set preferences</strong><p>Request accessible pathways if needed.</p></div><div><span>03 /</span><strong>Get an estimate</strong><p>View demo route distance and estimated walking time.</p></div></section>
+  </main><footer>CampusPath · Academic prototype · University of Maryland Global Campus · CMSC 495 Group 4</footer>
+</body>
+</html>
