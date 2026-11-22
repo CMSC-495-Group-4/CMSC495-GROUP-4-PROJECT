@@ -257,9 +257,149 @@ class CampusNavigationApiTests(unittest.TestCase):
             "/api/chat",
             json={"message": "x" * 501},
         )
-
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.get_json()["error"]["code"], "INVALID_REQUEST")
+
+    def test_chat_is_rate_limited_per_remote_ip(self):
+        self.app.config["CHAT_RATE_LIMIT"] = 2
+        provider_response = {
+            "choices": [
+                {
+                    "message": {
+                        "content": json.dumps(
+                            {
+                                "intent": "clarify",
+                                "answer": "I don't know.",
+                                "start": None,
+                                "destination": None,
+                                "accessible": None,
+                                "timePeriod": None,
+                            }
+                        )
+                    }
+                }
+            ]
+        }
+
+        class FakeResponse:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return None
+
+            def read(self):
+                return json.dumps(provider_response).encode("utf-8")
+
+        with patch("chatbot.urllib.request.urlopen", return_value=FakeResponse()):
+            first = self.client.post("/api/chat", json={"message": "What is CampusPath?"})
+            second = self.client.post("/api/chat", json={"message": "What is CampusPath?"})
+            third = self.client.post("/api/chat", json={"message": "What is CampusPath?"})
+            another_ip = self.client.post(
+                "/api/chat",
+                json={"message": "What is CampusPath?"},
+                environ_base={"REMOTE_ADDR": "192.0.2.1"},
+            )
+
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(second.status_code, 200)
+        self.assertEqual(third.status_code, 429)
+        self.assertEqual(third.get_json()["error"]["code"], "RATE_LIMITED")
+        self.assertEqual(another_ip.status_code, 200)
+
+    def test_chat_timeout_returns_safe_provider_error(self):
+        with patch(
+            "chatbot.urllib.request.urlopen",
+            side_effect=TimeoutError("provider timeout"),
+        ):
+            response = self.client.post(
+                "/api/chat",
+                json={"message": "What is CampusPath?"},
+            )
+
+        self.assertEqual(response.status_code, 502)
+        self.assertEqual(
+            response.get_json()["error"]["code"],
+            "CHAT_UNAVAILABLE",
+        )
+        self.assertNotIn("provider timeout", response.get_data(as_text=True))
+
+    def test_chat_malformed_provider_response_returns_safe_error(self):
+        class FakeResponse:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return None
+
+            def read(self):
+                return b'{"unexpected": "payload"}'
+
+        with patch("chatbot.urllib.request.urlopen", return_value=FakeResponse()):
+            response = self.client.post(
+                "/api/chat",
+                json={"message": "What is CampusPath?"},
+            )
+
+        self.assertEqual(response.status_code, 502)
+        self.assertEqual(
+            response.get_json()["error"]["code"],
+            "CHAT_UNAVAILABLE",
+        )
+
+    def test_chat_and_route_return_consistent_route_data(self):
+        provider_response = {
+            "choices": [
+                {
+                    "message": {
+                        "content": json.dumps(
+                            {
+                                "intent": "route",
+                                "answer": "",
+                                "start": "Library",
+                                "destination": "Center",
+                                "accessible": False,
+                                "timePeriod": "midday",
+                            }
+                        )
+                    }
+                }
+            ]
+        }
+
+        class FakeResponse:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return None
+
+            def read(self):
+                return json.dumps(provider_response).encode("utf-8")
+
+        direct = self.client.post(
+            "/api/route",
+            json={
+                "startId": 1,
+                "destinationId": 3,
+                "accessible": False,
+                "timePeriod": "midday",
+            },
+        )
+        with patch("chatbot.urllib.request.urlopen", return_value=FakeResponse()):
+            through_chat = self.client.post(
+                "/api/chat",
+                json={"message": "Get me from Library to Center at midday"},
+            )
+
+        direct_route = direct.get_json()
+        chat_route = through_chat.get_json()["route"]
+        self.assertEqual(direct.status_code, 200)
+        self.assertEqual(through_chat.status_code, 200)
+        self.assertEqual(chat_route["pathwayIds"], direct_route["pathwayIds"])
+        self.assertEqual(chat_route["distanceMeters"], direct_route["distanceMeters"])
+        self.assertEqual(chat_route["accessible"], direct_route["accessible"])
+        self.assertEqual(chat_route["timePeriod"], direct_route["timePeriod"])
 
     def test_travel_time_observations_join_to_model_features(self):
         with self.app.app_context():

@@ -52,6 +52,7 @@ class ChatProviderError(Exception):
 
 
 def interpret_message(message, locations, api_key, model):
+    """Interpret a chat message through OpenAI and validate the provider result."""
     if not api_key:
         raise ChatConfigurationError
 

@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   tests:
-    name: Python and JavaScript tests
+    name: Python and JavaScript tests and routing benchmark
     runs-on: ubuntu-latest
 
     steps:
@@ -43,3 +43,11 @@ jobs:
 
       - name: Run JavaScript tests
         run: node --test tests/test_frontend.cjs
+
+      - name: Run routing performance benchmark
+        run: python scripts/benchmark_routes.py --iterations 100 --output route-benchmark.json
+      - name: Upload routing benchmark
+        uses: actions/upload-artifact@v4
+        with:
+          name: route-benchmark
+          path: route-benchmark.json
