@@ -1,0 +1,10 @@
+# Technical Debt Refinement Evidence
+
+| Issue | Affected file/function | Problem | Change | Related PR | Verification |
+|---|---|---|---|---|---|
+| Shared routing rules | `route_rules.py`, `app.py`, `chatbot.py` | Routing constants could be duplicated or interpreted differently. | Retained `route_rules.py` as the shared source of walking speed, traffic factors, and time periods. | #8 | Route and chatbot consistency tests compare the same calculated route fields. |
+| Chatbot abuse protection | `app.py` chat route; `config.py` | `/api/chat` had no usage limit. | Added a configurable in-process sliding-window limit of 10 requests per 60 seconds per remote IP. | Pending | Automated test verifies 429 and confirms a separate IP has an independent limit. |
+| Chatbot provider failures | `chatbot.py`, `app.py` chat route | Provider timeouts and malformed responses needed explicit automated coverage. | Existing safe 502 handling is exercised without exposing provider details. | Pending | Automated timeout and malformed-response tests verify generic 502 errors. |
+| Missing route documentation | `app.py`, `README.md` | API fields, response structures, and error codes were incomplete. | Added endpoint and response documentation plus function docstrings. | Pending | Unit tests cover 400, 404, 502, 503, and 429 paths. |
+| Routing graph rebuild | `_shortest_path` in `app.py` | The graph is rebuilt for every request without baseline measurements. | Added a repeatable benchmark script and CI artifact instead of adding speculative caching. | Pending | Local benchmark ran 100 requests on a synthetic four-building graph; CI artifact will be available after the workflow runs. Cache remains deferred until representative measurements justify it. |
+| Endpoint consistency | `/api/route`, `/api/chat` | Route calculation could diverge between direct and chat requests. | Both paths use `_find_route` and shared route rules. | Pending | Direct-route and chat-route test compares pathway IDs, distance, accessibility, and time period. |

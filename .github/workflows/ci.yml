@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   tests:
-    name: Python tests
+    name: Python tests and routing benchmark
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -25,3 +25,10 @@ jobs:
         run: python -m pip install -r requirements.txt
       - name: Run tests
         run: python -m unittest discover -s tests -v
+      - name: Run routing performance benchmark
+        run: python scripts/benchmark_routes.py --iterations 100 --output route-benchmark.json
+      - name: Upload routing benchmark
+        uses: actions/upload-artifact@v4
+        with:
+          name: route-benchmark
+          path: route-benchmark.json
