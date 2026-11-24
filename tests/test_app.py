@@ -314,15 +314,26 @@ class CampusNavigationApiTests(unittest.TestCase):
         ):
             response = self.client.post(
                 "/api/chat",
-                json={"message": "What is CampusPath?"},
+                json={"message": "How are route distance and walking time calculated?"},
             )
 
-        self.assertEqual(response.status_code, 502)
-        self.assertEqual(
-            response.get_json()["error"]["code"],
-            "CHAT_UNAVAILABLE",
-        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("75 meters per minute", response.get_json()["reply"])
         self.assertNotIn("provider timeout", response.get_data(as_text=True))
+
+    def test_chat_timeout_falls_back_to_local_route_calculation(self):
+        with patch(
+            "chatbot.urllib.request.urlopen",
+            side_effect=TimeoutError("provider timeout"),
+        ):
+            response = self.client.post(
+                "/api/chat",
+                json={"message": "Get me from the Library to Center at midday"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()["route"]["pathwayIds"], [10, 11])
+        self.assertEqual(response.get_json()["route"]["timePeriod"], "midday")
 
     def test_chat_malformed_provider_response_returns_safe_error(self):
         class FakeResponse:
@@ -341,11 +352,8 @@ class CampusNavigationApiTests(unittest.TestCase):
                 json={"message": "What is CampusPath?"},
             )
 
-        self.assertEqual(response.status_code, 502)
-        self.assertEqual(
-            response.get_json()["error"]["code"],
-            "CHAT_UNAVAILABLE",
-        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()["reply"], "CampusPath is an academic prototype for campus walking routes.")
 
     def test_chat_and_route_return_consistent_route_data(self):
         provider_response = {
