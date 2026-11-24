@@ -51,6 +51,114 @@ class ChatProviderError(Exception):
     """Raised when the AI provider cannot return a valid response."""
 
 
+def interpret_message_fallback(message, locations):
+    """Provide a deterministic response when the AI provider is unavailable."""
+    normalized = " ".join(message.lower().split())
+    location_names = [
+        location["name"] for location in locations
+    ]
+
+    time_period = next(
+        (period for period in TIME_PERIODS if period in normalized),
+        None,
+    )
+
+    mentioned_locations = sorted(
+        (
+            location
+            for location in locations
+            if location["name"].lower() in normalized
+        ),
+        key=lambda location: normalized.find(location["name"].lower()),
+    )
+
+    route_request = (
+        bool(mentioned_locations)
+        or any(
+            phrase in normalized
+            for phrase in (
+                "directions",
+                "how do i get",
+                "get me",
+                "take me",
+            )
+        )
+    )
+    if route_request:
+        start = mentioned_locations[0]["name"] if len(mentioned_locations) > 0 else None
+        destination = (
+            mentioned_locations[1]["name"]
+            if len(mentioned_locations) > 1
+            else None
+        )
+        if len(mentioned_locations) == 1:
+            if normalized.startswith(("to ", "go to ", "get me to ", "take me to ")):
+                destination = mentioned_locations[0]["name"]
+                start = None
+            else:
+                start = mentioned_locations[0]["name"]
+
+        return {
+            "intent": "route",
+            "answer": "",
+            "start": start,
+            "destination": destination,
+            "accessible": any(
+                term in normalized
+                for term in ("accessible", "wheelchair", "ada")
+            ),
+            "timePeriod": time_period,
+        }
+
+    if any(
+        phrase in normalized
+        for phrase in (
+            "walking time",
+            "travel time",
+            "how long",
+            "distance",
+            "meter",
+            "calculate",
+            "traffic",
+        )
+    ):
+        answer = (
+            f"Route distance sums stored segment distances. Walking time uses "
+            f"a {WALKING_SPEED_METERS_PER_MINUTE:g} meters per minute baseline "
+            "and illustrative traffic weights when a time period is selected."
+        )
+        return {
+            "intent": "faq",
+            "answer": answer,
+            "start": None,
+            "destination": None,
+            "accessible": None,
+            "timePeriod": None,
+        }
+
+    if "campuspath" in normalized or "what does this app do" in normalized:
+        answer = (
+            "CampusPath is an academic prototype for campus walking routes."
+        )
+        return {
+            "intent": "faq",
+            "answer": answer,
+            "start": None,
+            "destination": None,
+            "accessible": None,
+            "timePeriod": None,
+        }
+
+    return {
+        "intent": "clarify",
+        "answer": "I don't know.",
+        "start": None,
+        "destination": None,
+        "accessible": None,
+        "timePeriod": None,
+    }
+
+
 def interpret_message(message, locations, api_key, model):
     """Interpret a chat message through OpenAI and validate the provider result."""
     if not api_key:

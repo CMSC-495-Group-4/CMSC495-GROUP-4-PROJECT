@@ -10,6 +10,7 @@ from flask import Flask, jsonify, render_template, request
 from chatbot import (
     ChatConfigurationError,
     ChatProviderError,
+    interpret_message_fallback,
     interpret_message,
 )
 from config import Config
@@ -321,11 +322,7 @@ def create_app(test_config=None):
                 503,
             )
         except ChatProviderError:
-            return _error(
-                "CHAT_UNAVAILABLE",
-                "The campus assistant could not respond. Please try again.",
-                502,
-            )
+            interpretation = interpret_message_fallback(message.strip(), locations)
 
         if interpretation["intent"] != "route":
             answer = interpretation["answer"].strip()

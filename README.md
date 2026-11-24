@@ -84,8 +84,8 @@ spending limit. Excess requests return `429 RATE_LIMITED`.
   unavailable or inaccessible routes return `404 ROUTE_NOT_FOUND`.
 - `POST /api/chat` requires a 1-500 character `message`. Missing provider
   configuration returns `503 CHAT_NOT_CONFIGURED`, provider failures or
-  timeouts return `502 CHAT_UNAVAILABLE`, and excessive requests return
-  `429 RATE_LIMITED`.
+  malformed responses fall back to deterministic campus facts and route
+  matching, and excessive requests return `429 RATE_LIMITED`.
 - A successful route response contains `routeId`, `pathwayIds`, `directions`,
   `distanceMeters`, `accessible`, `estimatedMinutes`, `predictionSource`,
   `timePeriod`, and numbered direction steps. `routeId` is unique per request.
