@@ -165,9 +165,11 @@ async function handleRouteSubmit(event) {
       showMessage(error.message || 'Unable to calculate the route.');
     }
   } finally {
-    if (routeController === controller) routeController = null;
-    routeBusy = false;
-    updateRouteButton();
+    if (routeController === controller) {
+      routeController = null;
+      routeBusy = false;
+      updateRouteButton();
+    }
   }
 }
 

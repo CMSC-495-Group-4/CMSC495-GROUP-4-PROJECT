@@ -1,6 +1,8 @@
 """Flask entry point for the CMSC 495 campus navigation frontend."""
 
 import heapq
+import threading
+import time
 import uuid
 
 from flask import Flask, jsonify, render_template, request
@@ -12,13 +14,15 @@ from chatbot import (
 )
 from config import Config
 from db import get_db, init_app as init_database_app, initialize_database
-
-
-WALKING_SPEED_METERS_PER_MINUTE = 75.0
-TRAFFIC_COST_FACTORS = {"low": 1.0, "medium": 1.5, "high": 3.0}
+from route_rules import (
+    TIME_PERIODS,
+    TRAFFIC_COST_FACTORS,
+    WALKING_SPEED_METERS_PER_MINUTE,
+)
 
 
 def _shortest_path(connection, start_id, destination_id, accessible, time_period=None):
+    """Build a graph and return the shortest route using Dijkstra's algorithm."""
     query = """
         SELECT p.pathway_id, p.start_building_id, p.end_building_id,
                p.distance_meters, COALESCE(t.foot_traffic, p.foot_traffic)
@@ -94,6 +98,7 @@ def _shortest_path(connection, start_id, destination_id, accessible, time_period
 
 
 def _find_route(connection, start_id, destination_id, accessible, time_period=None):
+    """Validate route inputs and return API route data or an error tuple."""
     if start_id == destination_id:
         return None, (
             "INVALID_REQUEST",
@@ -187,10 +192,16 @@ def _find_route(connection, start_id, destination_id, accessible, time_period=No
 
 
 def create_app(test_config=None):
+    """Create and configure the Flask application."""
     app = Flask(__name__)
     app.config.from_object(Config)
     if test_config:
         app.config.update(test_config)
+
+    app.extensions["chat_rate_limits"] = {
+        "events": {},
+        "lock": threading.Lock(),
+    }
 
     initialize_database(app.config["DATABASE_NAME"])
     init_database_app(app)
@@ -245,7 +256,7 @@ def create_app(test_config=None):
                 time_period is not None
                 and (
                     not isinstance(time_period, str)
-                    or time_period not in {"morning", "midday", "evening"}
+                    or time_period not in TIME_PERIODS
                 )
             )
         ):
@@ -253,7 +264,7 @@ def create_app(test_config=None):
                 "INVALID_REQUEST",
                 "startId and destinationId must be positive integers, and "
                 "accessible must be a boolean and timePeriod must be "
-                "morning, midday, evening, or omitted.",
+                f"{', '.join(TIME_PERIODS)}, or omitted.",
                 400,
             )
         route_data, error = _find_route(
@@ -273,6 +284,22 @@ def create_app(test_config=None):
                 "A message of 1 to 500 characters is required.",
                 400,
             )
+
+        rate_state = app.extensions["chat_rate_limits"]
+        now = time.monotonic()
+        limit = app.config["CHAT_RATE_LIMIT"]
+        window = app.config["CHAT_RATE_WINDOW_SECONDS"]
+        client_ip = request.remote_addr or "unknown"
+        with rate_state["lock"]:
+            timestamps = rate_state["events"].setdefault(client_ip, [])
+            timestamps[:] = [timestamp for timestamp in timestamps if now - timestamp < window]
+            if len(timestamps) >= limit:
+                return _error(
+                    "RATE_LIMITED",
+                    "Too many chat requests. Please try again later.",
+                    429,
+                )
+            timestamps.append(now)
 
         locations = [
             {"id": row["building_id"], "name": row["building_name"]}
